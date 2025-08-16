@@ -2,8 +2,6 @@ package user.sjrd.floorlevelledgrounds
 
 import scala.annotation.tailrec
 
-import scala.collection.immutable.TreeSet
-
 import com.funlabyrinthe.core.*
 import com.funlabyrinthe.core.graphics.*
 import com.funlabyrinthe.mazes.*
@@ -57,13 +55,13 @@ class FloorLevelledGround(using ComponentInit) extends Ground derives Reflector:
   override protected def doDrawCeiling(context: DrawSquareContext): Unit =
     Bridge.drawBridgesAbove(context)
 
-  override protected def editMapAdd(ref: SquareRef): EditUserActionResult =
+  override protected def editMapAdd(ref: SquareRef)(using EditingServices): Unit =
     val map = ref.map
     val pos = ref.pos
     val isInside = ref.isInside
 
     if level < 0 || level >= map.dimensions.z then
-      EditUserActionResult.Error(
+      EditingServices.error(
         "This map does not have enough floors for this field."
       )
     else
@@ -88,8 +86,6 @@ class FloorLevelledGround(using ComponentInit) extends Ground derives Reflector:
         else
           map.outside(z) = emptyField
       end for
-
-      EditUserActionResult.Done
     end if
   end editMapAdd
 end FloorLevelledGround
