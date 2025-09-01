@@ -32,16 +32,11 @@ export FloorLevelledGrounds.*
 final case class ClimbLevelUp(levelDiff: Int) extends Ability
 final case class FallLevelDown(levelDiff: Int) extends Ability
 
-final class FloorLevelledGroundCreator(using ComponentInit) extends ComponentCreator:
-  type CreatedComponentType = FloorLevelledGround
-
+final class FloorLevelledGroundCreator(using ComponentInit) extends ComponentCreator[FloorLevelledGround]:
   category = ComponentCategory("levelledgrounds", "Levelled Grounds")
 
   icon += "Creators/LevelledGroundCreator"
   icon += "Creators/Creator"
-
-  protected def createComponent()(using init: ComponentInit): CreatedComponentType =
-    new FloorLevelledGround()
 end FloorLevelledGroundCreator
 
 class FloorLevelledGround(using ComponentInit) extends Ground derives Reflector:
@@ -197,16 +192,11 @@ class EmptyField(using ComponentInit) extends FullOrEmptyField:
   }
 end EmptyField
 
-final class TunnelCreator(using ComponentInit) extends ComponentCreator:
-  type CreatedComponentType = Tunnel
-
+final class TunnelCreator(using ComponentInit) extends ComponentCreator[Tunnel]:
   category = ComponentCategory("tunnels", "Tunnels")
 
   icon += "Gates/Tunnel"
   icon += "Creators/Creator"
-
-  protected def createComponent()(using init: ComponentInit): CreatedComponentType =
-    new Tunnel()
 end TunnelCreator
 
 class Tunnel(using ComponentInit) extends FullField derives Reflector:
@@ -372,9 +362,7 @@ object Tunnel:
     case Open, Closed, ClosedWithGates
 end Tunnel
 
-final class BridgeCreator(using ComponentInit) extends ComponentCreator:
-  type CreatedComponentType = Bridge
-
+final class BridgeCreator(using ComponentInit) extends ComponentCreator[Bridge]:
   category = ComponentCategory("bridges", "Bridges")
 
   @transient @noinspect
@@ -387,9 +375,6 @@ final class BridgeCreator(using ComponentInit) extends ComponentCreator:
 
   icon ++= centerPainter.items ++ openingPainters.flatMap(_.items)
   icon += "Creators/Creator"
-
-  protected def createComponent()(using init: ComponentInit): CreatedComponentType =
-    new Bridge()
 end BridgeCreator
 
 class Bridge(using ComponentInit) extends Field derives Reflector:
