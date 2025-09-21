@@ -39,13 +39,11 @@ final class FloorLevelledGroundCreator(using ComponentInit) extends ComponentCre
   icon += "Creators/Creator"
 end FloorLevelledGroundCreator
 
-class FloorLevelledGround(using ComponentInit) extends Ground derives Reflector:
+class FloorLevelledGround(using ComponentInit) extends Ground:
   painter += "Fields/Grass"
   category = ComponentCategory("levelledgrounds", "Levelled Grounds")
 
   var level: Int = 0
-
-  override def reflect() = autoReflect[FloorLevelledGround]
 
   override protected def doDrawCeiling(context: DrawSquareContext): Unit =
     Bridge.drawBridgesAbove(context)
@@ -199,7 +197,7 @@ final class TunnelCreator(using ComponentInit) extends ComponentCreator[Tunnel]:
   icon += "Creators/Creator"
 end TunnelCreator
 
-class Tunnel(using ComponentInit) extends FullField derives Reflector:
+class Tunnel(using ComponentInit) extends FullField:
   import Tunnel.*
   
   var openings: Set[Direction] = Direction.values.toSet
@@ -209,8 +207,6 @@ class Tunnel(using ComponentInit) extends FullField derives Reflector:
     Direction.values.toList.map(d => universe.EmptyPainter + s"Gates/Tunnel$d")
 
   category = ComponentCategory("tunnels", "Tunnels")
-
-  override def reflect() = autoReflect[Tunnel]
 
   // Cancel the redirect of FullField
   override protected def editMapRedirect(pos: SquareRef, newComponent: SquareComponent): SquareRef =
@@ -377,12 +373,10 @@ final class BridgeCreator(using ComponentInit) extends ComponentCreator[Bridge]:
   icon += "Creators/Creator"
 end BridgeCreator
 
-class Bridge(using ComponentInit) extends Field derives Reflector:
+class Bridge(using ComponentInit) extends Field:
   var openings: Set[Direction] = Direction.values.toSet
   
   category = ComponentCategory("bridges", "Bridges")
-
-  override def reflect() = autoReflect[Bridge]
 
   override protected def doDraw(context: DrawSquareContext): Unit =
     import context.*
