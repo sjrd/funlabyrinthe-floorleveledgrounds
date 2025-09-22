@@ -7,27 +7,14 @@ import com.funlabyrinthe.core.graphics.*
 import com.funlabyrinthe.mazes.*
 import com.funlabyrinthe.mazes.std.*
 
-object FloorLevelledGrounds extends Module:
-  override protected def createComponents()(using Universe): Unit =
-    val floorLevelledGroundCreator = new FloorLevelledGroundCreator
-    val fullField = new FullField
-    val emptyField = new EmptyField
+object FloorLevelledGrounds extends Module
 
-    val tunnelCreator = new TunnelCreator
-    val bridgeCreator = new BridgeCreator
-  end createComponents
+@definition def floorLevelledGroundCreator(using Universe) = new FloorLevelledGroundCreator
+@definition def fullField(using Universe) = new FullField
+@definition def emptyField(using Universe) = new EmptyField
 
-  def floorLevelledGroundCreator(using Universe): FloorLevelledGroundCreator =
-    myComponentByID("floorLevelledGroundCreator")
-
-  def fullField(using Universe): FullField = myComponentByID("fullField")
-  def emptyField(using Universe): EmptyField = myComponentByID("emptyField")
-
-  def tunnelCreator(using Universe): TunnelCreator = myComponentByID("tunnelCreator")
-  def bridgeCreator(using Universe): BridgeCreator = myComponentByID("bridgeCreator")
-end FloorLevelledGrounds
-
-export FloorLevelledGrounds.*
+@definition def tunnelCreator(using Universe) = new TunnelCreator
+@definition def bridgeCreator(using Universe) = new BridgeCreator
 
 final case class ClimbLevelUp(levelDiff: Int) extends Ability
 final case class FallLevelDown(levelDiff: Int) extends Ability
