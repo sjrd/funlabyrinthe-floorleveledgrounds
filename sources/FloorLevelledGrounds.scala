@@ -50,7 +50,7 @@ class FloorLevelledGround(using ComponentInit) extends Ground:
         map(pos.withZ(level)) = this
       else
         map.outside(level) = this
-    
+
       // Place full fields below
       for z <- 0 until level if !map(pos.withZ(z)).field.isInstanceOf[FullField] do
         if isInside then
@@ -84,7 +84,7 @@ sealed abstract class FullOrEmptyField(using ComponentInit) extends Field:
 
   override protected def doDraw(context: DrawSquareContext): Unit =
     import context.*
-    
+
     where.flatMap(findDestSquare(_)) match
       case None =>
         gc.fill = Color.Black
@@ -186,9 +186,9 @@ end TunnelCreator
 
 class Tunnel(using ComponentInit) extends FullField:
   import Tunnel.*
-  
+
   var openings: Set[Direction] = Direction.values.toSet
-  
+
   @transient @noinspect
   val gatePainters: List[Painter] =
     Direction.values.toList.map(d => universe.EmptyPainter + s"Gates/Tunnel$d")
@@ -211,12 +211,12 @@ class Tunnel(using ComponentInit) extends FullField:
 
   override protected def doDrawCeiling(context: DrawSquareContext): Unit =
     import context.*
-    
+
     drawModeFor(context) match
       case DrawMode.Open =>
         val aboveCanvas = universe.graphicsSystem.createCanvas(SquareSize, SquareSize)
         val aboveGC = aboveCanvas.getGraphicsContext2D()
-    
+
         // super.doDraw on aboveCanvas
         val aboveContext = context.withGraphicsContext(
           aboveGC,
@@ -225,7 +225,7 @@ class Tunnel(using ComponentInit) extends FullField:
         where.flatMap(findDestSquare(_)) match
           case Some(dest) => dest().field.drawTo(aboveContext.withWhere(Some(dest)))
           case None       => super.doDraw(aboveContext)
-    
+
         // Make some parts of aboveCanvas transparent (center and openings)
         def clearRect(rect: Rectangle2D): Unit =
           aboveGC.clearRect(rect.minX, rect.minY, rect.width, rect.height)
@@ -233,7 +233,7 @@ class Tunnel(using ComponentInit) extends FullField:
         for dir <- Direction.values do
           if isActuallyOpened(where, dir) then
             clearRect(OpeningRects(dir.ordinal))
-    
+
         // Draw aboveCanvas on the final context
         gc.drawImage(aboveCanvas, rect.minX, rect.minY)
 
@@ -324,7 +324,7 @@ object Tunnel:
   private val BorderSize = 5
   private val AntiBorderSize = SquareSize - BorderSize
   private val CenterSize = SquareSize - 2*BorderSize
-  
+
   private val CenterRect =
     Rectangle2D(BorderSize, BorderSize, CenterSize, CenterSize)
 
@@ -351,7 +351,7 @@ final class BridgeCreator(using ComponentInit) extends ComponentCreator[Bridge]:
   @transient @noinspect
   val centerPainter: Painter =
     universe.EmptyPainter + "Bridges/BridgeCenter"
-    
+
   @transient @noinspect
   val openingPainters: List[Painter] =
     Direction.values.toList.map(d => universe.EmptyPainter + s"Bridges/Bridge$d")
@@ -362,7 +362,7 @@ end BridgeCreator
 
 class Bridge(using ComponentInit) extends Field:
   var openings: Set[Direction] = Direction.values.toSet
-  
+
   category = ComponentCategory("bridges", "Bridges")
 
   override protected def doDraw(context: DrawSquareContext): Unit =
