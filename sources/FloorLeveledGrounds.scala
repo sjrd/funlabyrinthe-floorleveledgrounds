@@ -1,4 +1,4 @@
-package user.sjrd.floorlevelledgrounds
+package user.sjrd.floorleveledgrounds
 
 import scala.annotation.tailrec
 
@@ -7,9 +7,9 @@ import com.funlabyrinthe.core.graphics.*
 import com.funlabyrinthe.mazes.*
 import com.funlabyrinthe.mazes.std.*
 
-object FloorLevelledGrounds extends Module
+object FloorLeveledGrounds extends Module
 
-@definition def floorLevelledGroundCreator(using Universe) = new FloorLevelledGroundCreator
+@definition def floorLeveledGroundCreator(using Universe) = new FloorLeveledGroundCreator
 @definition def fullField(using Universe) = new FullField
 @definition def emptyField(using Universe) = new EmptyField
 
@@ -19,16 +19,16 @@ object FloorLevelledGrounds extends Module
 final case class ClimbLevelUp(levelDiff: Int) extends Ability
 final case class FallLevelDown(levelDiff: Int) extends Ability
 
-final class FloorLevelledGroundCreator(using ComponentInit) extends ComponentCreator[FloorLevelledGround]:
-  category = ComponentCategory("levelledgrounds", "Levelled Grounds")
+final class FloorLeveledGroundCreator(using ComponentInit) extends ComponentCreator[FloorLeveledGround]:
+  category = ComponentCategory("leveledgrounds", "Leveled Grounds")
 
-  icon += "Creators/LevelledGroundCreator"
+  icon += "Creators/LeveledGroundCreator"
   icon += "Creators/Creator"
-end FloorLevelledGroundCreator
+end FloorLeveledGroundCreator
 
-class FloorLevelledGround(using ComponentInit) extends Ground:
+class FloorLeveledGround(using ComponentInit) extends Ground:
   painter += "Fields/Grass"
-  category = ComponentCategory("levelledgrounds", "Levelled Grounds")
+  category = ComponentCategory("leveledgrounds", "Leveled Grounds")
 
   var level: Int = 0
 
@@ -68,10 +68,10 @@ class FloorLevelledGround(using ComponentInit) extends Ground:
       end for
     end if
   end editMapAdd
-end FloorLevelledGround
+end FloorLeveledGround
 
 sealed abstract class FullOrEmptyField(using ComponentInit) extends Field:
-  category = ComponentCategory("levelledgrounds", "Levelled Grounds")
+  category = ComponentCategory("leveledgrounds", "Leveled Grounds")
 
   override protected def editMapRedirect(pos: SquareRef, newComponent: SquareComponent): SquareRef =
     if newComponent.isInstanceOf[Field] then pos
