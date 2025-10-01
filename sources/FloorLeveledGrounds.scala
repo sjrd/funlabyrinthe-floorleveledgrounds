@@ -206,7 +206,7 @@ class Tunnel(using ComponentInit) extends FullField:
     import context.*
 
     if drawModeFor(context) == DrawMode.Open then
-      painter.drawTo(context)
+      context.drawTiled(painter)
   end doDraw
 
   override protected def doDrawCeiling(context: DrawSquareContext): Unit =
@@ -235,7 +235,7 @@ class Tunnel(using ComponentInit) extends FullField:
             clearRect(OpeningRects(dir.ordinal))
 
         // Draw aboveCanvas on the final context
-        gc.drawImage(aboveCanvas, rect.minX, rect.minY)
+        gc.drawImage(aboveCanvas, universe.tickCount, rect.minX, rect.minY)
 
       case DrawMode.Closed =>
         super.doDraw(context) // behavior of FullField
@@ -244,7 +244,7 @@ class Tunnel(using ComponentInit) extends FullField:
         super.doDraw(context) // behavior of FullField
         for dir <- Direction.values do
           if isGate(where, dir) then
-            gatePainters(dir.ordinal).drawTo(context)
+            context.drawTiled(gatePainters(dir.ordinal))
   end doDrawCeiling
 
   protected def drawModeFor(context: DrawSquareContext): DrawMode =
@@ -382,10 +382,10 @@ class Bridge(using ComponentInit) extends Field:
     import context.*
 
     val creator = bridgeCreator
-    creator.centerPainter.drawTo(context)
+    context.drawTiled(creator.centerPainter)
     for dir <- Direction.values do
       if isActuallyOpened(where, dir) then
-        creator.openingPainters(dir.ordinal).drawTo(context)
+        context.drawTiled(creator.openingPainters(dir.ordinal))
   end doDrawBridge
 
   def hasOpening(dir: Direction): Boolean =
