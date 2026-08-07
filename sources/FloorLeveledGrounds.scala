@@ -3,7 +3,7 @@ package user.sjrd.floorleveledgrounds
 import scala.annotation.tailrec
 
 import com.funlabyrinthe.core.*
-import com.funlabyrinthe.core.graphics.*
+import com.funlabyrinthe.core.scene.*
 import com.funlabyrinthe.mazes.*
 import com.funlabyrinthe.mazes.std.*
 
@@ -32,8 +32,8 @@ class FloorLeveledGround(using ComponentInit) extends Ground:
 
   var level: Int = 0
 
-  override protected def doDrawCeiling(context: DrawSquareContext): Unit =
-    Bridge.drawBridgesAbove(context)
+  override protected def doPresentCeiling(context: PresentSquareContext): Batch[SceneNode] =
+    Bridge.presentBridgesAbove(context)
 
   override protected def editMapAdd(ref: SquareRef)(using EditingServices): Unit =
     val map = ref.map
@@ -82,19 +82,18 @@ sealed abstract class FullOrEmptyField(using ComponentInit) extends Field:
 
   protected def doFindDestSquare(pos: SquareRef): Option[SquareRef]
 
-  override protected def doDraw(context: DrawSquareContext): Unit =
+  override protected def doPresent(context: PresentSquareContext): Batch[SceneNode] = {
     import context.*
 
     where.flatMap(findDestSquare(_)) match
       case None =>
-        gc.fill = Color.Black
-        gc.fillRect(rect.minX, rect.minY, rect.width, rect.height)
+        Batch(Shape.Box(Rectangle(Point.zero, cellSize), Fill.Color(RGBA.Black), Stroke.None, cellSize.centerPoint))
       case Some(dest) =>
-        dest().drawTo(context.withWhere(Some(dest)))
-  end doDraw
+        dest().present(context.withWhere(Some(dest)))
+  }
 
-  override protected def doDrawCeiling(context: DrawSquareContext): Unit =
-    Bridge.drawBridgesAbove(context)
+  override protected def doPresentCeiling(context: PresentSquareContext): Batch[SceneNode] =
+    Bridge.presentBridgesAbove(context)
 
   protected def moveToOtherDest(context: MoveContext, dest: SquareRef): Unit = {
     val player = context.player
@@ -202,53 +201,42 @@ class Tunnel(using ComponentInit) extends FullField:
   def hasOpening(dir: Direction): Boolean =
     openings.contains(dir)
 
-  override protected def doDraw(context: DrawSquareContext): Unit =
+  override protected def doPresent(context: PresentSquareContext): Batch[SceneNode] =
+    if drawModeFor(context) == DrawMode.Open then context.presentTiled(painter)
+    else Batch.empty
+
+  override protected def doPresentCeiling(context: PresentSquareContext): Batch[SceneNode] = {
     import context.*
 
-    if drawModeFor(context) == DrawMode.Open then
-      context.drawTiled(painter)
-  end doDraw
-
-  override protected def doDrawCeiling(context: DrawSquareContext): Unit =
-    import context.*
-
-    drawModeFor(context) match
+    drawModeFor(context) match {
       case DrawMode.Open =>
-        val aboveCanvas = universe.graphicsSystem.createCanvas(SquareSize, SquareSize)
-        val aboveGC = aboveCanvas.getGraphicsContext2D()
+        // Render what is above
+        val presentedAbove: Batch[SceneNode] = where.flatMap(findDestSquare(_)) match
+          case Some(dest) => dest().field.present(context.withWhere(Some(dest)))
+          case None       => super.present(context)
 
-        // super.doDraw on aboveCanvas
-        val aboveContext = context.withGraphicsContext(
-          aboveGC,
-          Rectangle2D(0, 0, SquareSize, SquareSize),
-        )
-        where.flatMap(findDestSquare(_)) match
-          case Some(dest) => dest().field.drawTo(aboveContext.withWhere(Some(dest)))
-          case None       => super.doDraw(aboveContext)
-
-        // Make some parts of aboveCanvas transparent (center and openings)
-        def clearRect(rect: Rectangle2D): Unit =
-          aboveGC.clearRect(rect.minX, rect.minY, rect.width, rect.height)
-        clearRect(CenterRect)
+        // Build the mask to only display corners and walls from presentedAbove
+        var mask: Batch[SceneNode] = CornersMasks
         for dir <- Direction.values do
-          if isActuallyOpened(where, dir) then
-            clearRect(OpeningRects(dir.ordinal))
+          if !isActuallyOpened(where, dir) then
+            mask :+= WallMasks(dir.ordinal)
 
-        // Draw aboveCanvas on the final context
-        gc.drawImage(aboveCanvas, universe.tickCount, rect.minX, rect.minY)
+        Batch(Masked(Group(mask), Group(presentedAbove)))
 
       case DrawMode.Closed =>
-        super.doDraw(context) // behavior of FullField
+        super.doPresent(context) // behavior of FullField
 
       case DrawMode.ClosedWithGates =>
-        super.doDraw(context) // behavior of FullField
+        var result = super.doPresent(context) // behavior of FullField
         for dir <- Direction.values do
           if isGate(where, dir) then
-            context.drawTiled(gatePainters(dir.ordinal))
-  end doDrawCeiling
+            result ++= context.presentTiled(gatePainters(dir.ordinal))
+        result
+    }
+  }
 
-  protected def drawModeFor(context: DrawSquareContext): DrawMode =
-    context.purpose match
+  protected def drawModeFor(context: PresentSquareContext): DrawMode = {
+    context.purpose match {
       case purpose: DrawPurpose.PlayerView =>
         (context.where, purpose.player.position) match
           case (Some(pos), Some(playerPos)) =>
@@ -264,7 +252,8 @@ class Tunnel(using ComponentInit) extends FullField:
           DrawMode.Closed
       case _ =>
         DrawMode.Open
-  end drawModeFor
+    }
+  }
 
   override def entering(context: MoveContext): Unit = {
     import context.*
@@ -325,21 +314,36 @@ object Tunnel:
   private val AntiBorderSize = SquareSize - BorderSize
   private val CenterSize = SquareSize - 2*BorderSize
 
-  private val CenterRect =
-    Rectangle2D(BorderSize, BorderSize, CenterSize, CenterSize)
+  private val BlackFill = Fill.Color(RGBA.Black)
 
-  private val OpeningRects =
+  private val CornersMasks: Batch[SceneNode] = {
+    val cornerSize = Size(BorderSize, BorderSize)
+    val topLefts = Batch(
+      Point(0, 0),
+      Point(AntiBorderSize, 0),
+      Point(0, AntiBorderSize),
+      Point(AntiBorderSize, AntiBorderSize),
+    )
+    val ref = Size(SquareSize, SquareSize).centerPoint
+    for topLeft <- topLefts yield
+      Shape.Box(Rectangle(topLeft, cornerSize), BlackFill, Stroke.None, ref)
+  }
+
+  private val WallMasks: Array[SceneNode] = {
+    val ref = Size(SquareSize, SquareSize).centerPoint
     for dir <- Direction.values yield
-      dir match
+      val rect = dir match {
         case Direction.North =>
-          Rectangle2D(BorderSize, 0, CenterSize, BorderSize)
+          Rectangle(Point(BorderSize, 0), Size(CenterSize, BorderSize))
         case Direction.East =>
-          Rectangle2D(AntiBorderSize, BorderSize, BorderSize, CenterSize)
+          Rectangle(Point(AntiBorderSize, BorderSize), Size(BorderSize, CenterSize))
         case Direction.South =>
-          Rectangle2D(BorderSize, AntiBorderSize, CenterSize, BorderSize)
+          Rectangle(Point(BorderSize, AntiBorderSize), Size(CenterSize, BorderSize))
         case Direction.West =>
-          Rectangle2D(0, BorderSize, BorderSize, CenterSize)
-  end OpeningRects
+          Rectangle(Point(0, BorderSize), Size(BorderSize, CenterSize))
+      }
+      Shape.Box(rect, BlackFill, Stroke.None, ref)
+  }
 
   enum DrawMode:
     case Open, Closed, ClosedWithGates
@@ -365,28 +369,33 @@ class Bridge(using ComponentInit) extends Field:
 
   category = ComponentCategory("bridges", "Bridges")
 
-  override protected def doDraw(context: DrawSquareContext): Unit =
+  override protected def doPresent(context: PresentSquareContext): Batch[SceneNode] = {
     import context.*
 
-    // Draw the square below the bridge
+    // Draw the bridge itself
+    val bridgeItself = doPresentBridge(context)
+
+    // Draw the square *below* the bridge
     if isSomewhere then
       val below = where.get - (0, 0, 1)
       if below.isInside then
-        below().drawTo(context.withWhere(Some(below)))
+        below().present(context.withWhere(Some(below))) ++ bridgeItself
+      else
+        bridgeItself
+    else
+      bridgeItself
+  }
 
-    // Draw the bridge itself
-    doDrawBridge(context)
-  end doDraw
-
-  def doDrawBridge(context: DrawSquareContext): Unit =
+  def doPresentBridge(context: PresentSquareContext): Batch[SceneNode] = {
     import context.*
 
     val creator = bridgeCreator
-    context.drawTiled(creator.centerPainter)
+    var result = context.presentTiled(creator.centerPainter)
     for dir <- Direction.values do
       if isActuallyOpened(where, dir) then
-        context.drawTiled(creator.openingPainters(dir.ordinal))
-  end doDrawBridge
+        result ++= context.presentTiled(creator.openingPainters(dir.ordinal))
+    result
+  }
 
   def hasOpening(dir: Direction): Boolean =
     openings.contains(dir)
@@ -428,9 +437,11 @@ class Bridge(using ComponentInit) extends Field:
 end Bridge
 
 object Bridge:
-  /** Draw the bridges that are above a given square. */
-  def drawBridgesAbove(context: DrawSquareContext): Unit =
-    if context.isSomewhere then
+  /** Present the bridges that are above a given square. */
+  def presentBridgesAbove(context: PresentSquareContext): Batch[SceneNode] = {
+    var result: Batch[SceneNode] = Batch.empty
+
+    if context.isSomewhere then {
       val pos = context.where.get
       for z <- pos.z until pos.map.dimensions.z do
         val above = pos.withZ(z)
@@ -438,13 +449,16 @@ object Bridge:
         aboveSquare.field match
           case bridge: Bridge =>
             val aboveContext = context.withWhere(Some(above))
-            bridge.doDrawBridge(aboveContext)
-            aboveSquare.effect.drawTo(aboveContext)
-            aboveSquare.tool.drawTo(aboveContext)
-            aboveSquare.obstacle.drawTo(aboveContext)
+            result = result
+              ++ bridge.doPresentBridge(aboveContext)
+              ++ aboveSquare.effect.present(aboveContext)
+              ++ aboveSquare.tool.present(aboveContext)
+              ++ aboveSquare.obstacle.present(aboveContext)
           case _ =>
             ()
       end for
-    end if
-  end drawBridgesAbove
+    }
+
+    result
+  }
 end Bridge
