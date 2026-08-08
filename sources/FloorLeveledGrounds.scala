@@ -9,22 +9,18 @@ import com.funlabyrinthe.mazes.std.*
 
 object FloorLeveledGrounds extends Module
 
-@definition def floorLeveledGroundCreator(using Universe) = new FloorLeveledGroundCreator
+@definition def floorLeveledGroundTemplate(using Universe) =
+  new FloorLeveledGround().asTemplate("Creators/LeveledGroundCreator")
 @definition def fullField(using Universe) = new FullField
 @definition def emptyField(using Universe) = new EmptyField
 
-@definition def tunnelCreator(using Universe) = new TunnelCreator
-@definition def bridgeCreator(using Universe) = new BridgeCreator
+@definition def tunnelTemplate(using Universe) =
+  new Tunnel().asTemplate("Gates/Tunnel")
+@definition def bridgeTemplate(using Universe) =
+  new Bridge().asTemplate("Bridges/BridgeCenter", "Bridges/BridgeNorth", "Bridges/BridgeEast", "Bridges/BridgeSouth", "Bridges/BridgeWest")
 
 final case class ClimbLevelUp(levelDiff: Int) extends Ability
 final case class FallLevelDown(levelDiff: Int) extends Ability
-
-final class FloorLeveledGroundCreator(using ComponentInit) extends ComponentCreator[FloorLeveledGround]:
-  category = ComponentCategory("leveledgrounds", "Leveled Grounds")
-
-  icon += "Creators/LeveledGroundCreator"
-  icon += "Creators/Creator"
-end FloorLeveledGroundCreator
 
 class FloorLeveledGround(using ComponentInit) extends Ground:
   painter += "Fields/Grass"
@@ -175,13 +171,6 @@ class EmptyField(using ComponentInit) extends FullOrEmptyField:
         below.isOutside || below().obstacle == noObstacle
   }
 end EmptyField
-
-final class TunnelCreator(using ComponentInit) extends ComponentCreator[Tunnel]:
-  category = ComponentCategory("tunnels", "Tunnels")
-
-  icon += "Gates/Tunnel"
-  icon += "Creators/Creator"
-end TunnelCreator
 
 class Tunnel(using ComponentInit) extends FullField:
   import Tunnel.*
@@ -349,7 +338,9 @@ object Tunnel:
     case Open, Closed, ClosedWithGates
 end Tunnel
 
-final class BridgeCreator(using ComponentInit) extends ComponentCreator[Bridge]:
+class Bridge(using ComponentInit) extends Field:
+  var openings: Set[Direction] = Direction.values.toSet
+
   category = ComponentCategory("bridges", "Bridges")
 
   @transient @noinspect
@@ -359,15 +350,6 @@ final class BridgeCreator(using ComponentInit) extends ComponentCreator[Bridge]:
   @transient @noinspect
   val openingPainters: List[Painter] =
     Direction.values.toList.map(d => universe.EmptyPainter + s"Bridges/Bridge$d")
-
-  icon ++= centerPainter.items ++ openingPainters.flatMap(_.items)
-  icon += "Creators/Creator"
-end BridgeCreator
-
-class Bridge(using ComponentInit) extends Field:
-  var openings: Set[Direction] = Direction.values.toSet
-
-  category = ComponentCategory("bridges", "Bridges")
 
   override protected def doPresent(context: PresentSquareContext): Batch[SceneNode] = {
     import context.*
@@ -389,11 +371,10 @@ class Bridge(using ComponentInit) extends Field:
   def doPresentBridge(context: PresentSquareContext): Batch[SceneNode] = {
     import context.*
 
-    val creator = bridgeCreator
-    var result = context.presentTiled(creator.centerPainter)
+    var result = context.presentTiled(centerPainter)
     for dir <- Direction.values do
       if isActuallyOpened(where, dir) then
-        result ++= context.presentTiled(creator.openingPainters(dir.ordinal))
+        result ++= context.presentTiled(openingPainters(dir.ordinal))
     result
   }
 
