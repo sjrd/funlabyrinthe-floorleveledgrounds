@@ -213,7 +213,7 @@ class Tunnel(using ComponentInit) extends FullField:
         // Render what is above
         val presentedAbove: Batch[SceneNode] = where.flatMap(findDestSquare(_)) match
           case Some(dest) => dest().field.present(context.withWhere(Some(dest)))
-          case None       => super.present(context)
+          case None       => super.doPresent(context)
 
         // Build the mask to only display corners and walls from presentedAbove
         var mask: Batch[SceneNode] = CornersMasks
