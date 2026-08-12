@@ -91,20 +91,16 @@ sealed abstract class FullOrEmptyField(using ComponentInit) extends Field:
   override protected def doPresentCeiling(context: PresentSquareContext): Batch[SceneNode] =
     Bridge.presentBridgesAbove(context)
 
-  protected def moveToOtherDest(context: MoveContext, dest: SquareRef): Unit = {
+  protected def moveToOtherDest(context: EnteringContext, dest: SquareRef): Unit = {
     val player = context.player
-    val otherContext = MoveContext(player, Some(dest), context.keyEvent)
+    val otherContext = EnteringContext(player, context.previousDirection, dest, context.keyEvent)
     otherContext.temporization = context.temporization
 
-    if !player.testMoveAllowed(otherContext) then
+    if !player.testMoveAllowed(dest, context.previousDirection, context.keyEvent) then
       context.cancel()
     else
-      if player.position == otherContext.src then
-        player.moveTo(otherContext, execute = true)
-
-      context.cancelled = otherContext.cancelled
-      context.goOnMoving = otherContext.goOnMoving
-      context.temporization = otherContext.temporization
+      context.cancel() // just in case some weird loop happens
+      player.moveTo(dest, execute = true)
   }
 end FullOrEmptyField
 
@@ -119,7 +115,7 @@ class FullField(using ComponentInit) extends FullOrEmptyField:
         case _            => Some(above)
   end doFindDestSquare
 
-  override def entering(context: MoveContext): Unit = {
+  override def entering(context: EnteringContext): Unit = {
     import context.*
 
     findDestSquare(pos) match
@@ -146,7 +142,7 @@ class EmptyField(using ComponentInit) extends FullOrEmptyField:
         case _             => Some(below)
   end doFindDestSquare
 
-  override def entering(context: MoveContext): Unit = {
+  override def entering(context: EnteringContext): Unit = {
     import context.*
 
     findDestSquare(pos) match
@@ -244,22 +240,20 @@ class Tunnel(using ComponentInit) extends FullField:
     }
   }
 
-  override def entering(context: MoveContext): Unit = {
+  override def entering(context: EnteringContext): Unit = {
     import context.*
 
-    val dir = player.direction
-    if isRegular && dir.isDefined && !hasOpening(dir.get.opposite) then
+    if !hasOpening(player.direction.opposite) then
       /* If we cannot enter the tunnel from here, act as the full field:
        * maybe we can climb up on top of it.
        */
       super.entering(context)
   }
 
-  override def exiting(context: MoveContext): Unit = {
+  override def exiting(context: ExitingContext): Unit = {
     import context.*
 
-    val dir = player.direction
-    if isRegular && dir.isDefined && !hasOpening(dir.get) then
+    if !hasOpening(player.direction) then
       // If we cannot exit the tunnel here, always cancel
       cancel()
   }
@@ -392,28 +386,18 @@ class Bridge(using ComponentInit) extends Field:
       }
   end isActuallyOpened
 
-  override def entering(context: MoveContext): Unit = {
+  override def entering(context: EnteringContext): Unit = {
     import context.*
 
-    player.direction match
-      case Some(dir) =>
-        if isRegular && (src.get.pos +> dir) == dest.get.pos then
-          if !isActuallyOpened(Some(pos), dir.opposite) then
-            cancel()
-      case None =>
-        ()
+    if !isActuallyOpened(Some(pos), player.direction.opposite) then
+      cancel()
   }
 
-  override def exiting(context: MoveContext): Unit = {
+  override def exiting(context: ExitingContext): Unit = {
     import context.*
 
-    player.direction match
-      case Some(dir) =>
-        if isRegular && (src.get.pos +> dir) == dest.get.pos then
-          if !isActuallyOpened(Some(pos), dir) then
-            cancel()
-      case None =>
-        ()
+    if !isActuallyOpened(Some(pos), player.direction) then
+      cancel()
   }
 end Bridge
 
