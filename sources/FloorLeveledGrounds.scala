@@ -153,7 +153,7 @@ class EmptyField(using ComponentInit) extends FullOrEmptyField:
         val heightDiff = pos.z - below.z
         if player.cannot(FallLevelDown(heightDiff)) then
           cancel()
-          player.showMessage("C'est trop haut pour sauter ici !")
+          player.showMessageOnce("C'est trop haut pour sauter ici !")
         else
           moveToOtherDest(context, below)
   }
